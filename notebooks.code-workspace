@@ -1,0 +1,48 @@
+{
+    "folders": [
+        {
+            "path": "demo"
+        },
+        {
+            "path": ".",
+            "name": "root"
+        }
+    ],
+    "settings": {
+        "[python]": {
+            "editor.defaultFormatter": "charliermarsh.ruff",
+            "editor.codeActionsOnSave": {
+                "source.fixAll.ruff": "always",
+                "source.organizeImports.ruff": "always"
+            }
+        },
+        "python.languageServer": "Pylance",
+        "python.testing.pytestEnabled": true,
+        "ruff.lint.args": [
+            "--config=./pyproject.toml"
+        ],
+        "python.defaultInterpreterPath": "./.venv/bin/python",
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-python.python",
+            "ms-python.vscode-pylance",
+            "charliermarsh.ruff",
+        ]
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "fmt",
+                "command": "poetry run ruff format . && poetry run ruff check . --fix",
+                "type": "shell",
+                "args": [],
+                "presentation": {
+                    "reveal": "always"
+                },
+                "group": "build"
+            }
+        ]
+    }
+}

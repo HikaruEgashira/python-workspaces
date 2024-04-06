@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "src"
+name = "workspace"
 version = "0.1.0"
 description = ""
 authors = []
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.12,<4.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.8"
@@ -17,11 +17,11 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-exclude = [".venv"]
-target-version = "py312"
+extend-include = ["*.ipynb"]
+extend-exclude = [".venv"]
 line-length = 119
 
 [tool.pytest.ini_options]
 log_level = "DEBUG"
-python_files = ["*_test.py"]
+python_files = ["*.py"]
 python_functions = ["test_*"]
