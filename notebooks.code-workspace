@@ -1,6 +1,9 @@
 {
     "folders": [
         {
+            "path": "claude"
+        },
+        {
             "path": "demo"
         },
         {
@@ -22,12 +25,17 @@
             "--config=./pyproject.toml"
         ],
         "python.defaultInterpreterPath": "./.venv/bin/python",
+        "files.exclude": {
+            "**/.git": true,
+            "**/*cache*": true,
+        }
     },
     "extensions": {
         "recommendations": [
             "ms-python.python",
             "ms-python.vscode-pylance",
             "charliermarsh.ruff",
+            "mkhl.direnv"
         ]
     },
     "tasks": {

@@ -13,9 +13,9 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "charliermarsh.ruff",
-        "GitHub.copilot"
+        "GitHub.copilot",
+        "mkhl.direnv"
       ]
     }
-  },
-  "postCreateCommand": "poetry install --no-root"
+  }
 }

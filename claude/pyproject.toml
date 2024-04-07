@@ -1,12 +1,14 @@
 [tool.poetry]
-name = "demo"
+name = "claude"
 version = "0.1.0"
 description = ""
 authors = []
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.12,<4.0"
+anthropic = "^0.23.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.8"
