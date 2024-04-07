@@ -1,6 +1,9 @@
 {
     "folders": [
         {
+            "path": "llm_spider"
+        },
+        {
             "path": "langchain"
         },
         {
