@@ -6,10 +6,12 @@ import platform
 import re
 from getpass import getpass
 from typing import List, Optional, TypedDict
+import io
 
 import nest_asyncio
-from langchain import hub
-from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core import prompts
+from langchain_core.prompts.image import ImagePromptTemplate
+from langchain_core.messages import BaseMessage, SystemMessage, ai, chat, function, human, system, tool
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_core.runnables import chain as chain_decorator
@@ -18,6 +20,8 @@ from langgraph.graph import END, StateGraph
 from PIL import Image
 from playwright.async_api import Page, async_playwright
 from playwright_stealth import stealth_async
+
+from path import Path
 
 
 def _getpass(env_var: str):
@@ -32,18 +36,17 @@ _getpass("OPENAI_API_KEY")
 
 # So overview, we have:
 
-# 1. Define graph state
-# 2. Define tools
-# 3. Define agent
-# 4. Define graph
+# 1. Graph State
+# 2. Tools
+# 3. Agent
+# 4. Graph
 # 5. Run agent
 
 # ----------------------------
 
 nest_asyncio.apply()
 
-# 1. Define Graph State:
-# 状態は、グラフ内の各ノードに入力を提供します。この場合、エージェントは、ウェブページオブジェクト（ブラウザ内）、注釈付き画像+バウンディングボックス、ユーザーの初期リクエスト、エージェントスクラッチパッド、システムプロンプトなどの情報を含むメッセージを追跡します。
+# 1. Graph State:
 
 
 # Bounding box
@@ -59,9 +62,6 @@ class Prediction(TypedDict):
     action: str
     args: Optional[List[str]]
 
-
-# This represents the state of the agent
-# as it proceeds through execution
 class AgentState(TypedDict):
     page: Page  # The Playwright web page lets us interact with the web environment
     input: str  # User request
@@ -73,9 +73,7 @@ class AgentState(TypedDict):
     observation: str  # The most recent response from a tool
 
 
-# 2. Define tools
-
-# We define them below here as functions:
+# 2. Tools:
 
 
 async def click(state: AgentState):
@@ -161,9 +159,7 @@ async def to_google(state: AgentState):
     return "Navigated to google.com."
 
 
-# 3a. Define Agent:
-
-# Agentはマルチモーダルモデルによって駆動され、各ステップで取るべきアクションを決定します。それは以下のいくつかの実行可能なオブジェクトで構成されています:
+# 3. Agent:
 
 # 1. 現在のページにバウンディングボックスを注釈する `mark_page` 関数
 # 2. ユーザーの質問、注釈付きの画像、Agentのスクラッチパッドを保持するプロンプト
@@ -192,8 +188,7 @@ async def mark_page(page):
     }
 
 
-# 3b. Agent definition:
-
+# Agent prompt
 
 async def annotate(state):
     marked_page = await mark_page.with_retry().ainvoke(state["page"])
@@ -230,19 +225,86 @@ def parse(text: str) -> dict:
     return {"action": action, "args": action_input}
 
 
-# Will need a later version of langchain to pull this image prompt template
-prompt = hub.pull("wfh/web-voyager")
+# prompt = hub.pull("wfh/web-voyager")
+prompt = prompts.ChatPromptTemplate(
+    input_variables=['bbox_descriptions', 'img', 'input'],
+    input_types={
+        'scratchpad': list[
+            ai.AIMessage|
+            human.HumanMessage|
+            chat.ChatMessage|
+            system.SystemMessage|
+            function.FunctionMessage|
+            tool.ToolMessage
+        ]
+    },
+    partial_variables={'scratchpad': []},
+    messages=[
+        prompts.SystemMessagePromptTemplate(
+            prompt=[
+                prompts.PromptTemplate(
+                    input_variables=[],
+                    template="""Imagine you are a robot browsing the web, just like humans. Now you need to complete a task. In each iteration, you will receive an Observation that includes a screenshot of a webpage and some texts. This screenshot will
+feature Numerical Labels placed in the TOP LEFT corner of each Web Element. Carefully analyze the visual
+information to identify the Numerical Label corresponding to the Web Element that requires interaction, then follow
+the guidelines and choose one of the following actions:
 
-# ChatPromptTemplate(input_variables=['bbox_descriptions', 'img', 'input'], input_types={'scratchpad': typing.List[typing.Union[langchain_core.messages.ai.AIMessage, langchain_core.messages.human.HumanMessage, langchain_core.messages.chat.ChatMessage, langchain_core.messages.system.SystemMessage, langchain_core.messages.function.FunctionMessage, langchain_core.messages.tool.ToolMessage]]}, partial_variables={'scratchpad': []}, messages=[SystemMessagePromptTemplate(prompt=[PromptTemplate(input_variables=[], template="Imagine you are a robot browsing the web, just like humans. Now you need to complete a task. In each iteration, you will receive an Observation that includes a screenshot of a webpage and some texts. This screenshot will\nfeature Numerical Labels placed in the TOP LEFT corner of each Web Element. Carefully analyze the visual\ninformation to identify the Numerical Label corresponding to the Web Element that requires interaction, then follow\nthe guidelines and choose one of the following actions:\n\n1. Click a Web Element.\n2. Delete existing content in a textbox and then type content.\n3. Scroll up or down.\n4. Wait \n5. Go back\n7. Return to google to start over.\n8. Respond with the final answer\n\nCorrespondingly, Action should STRICTLY follow the format:\n\n- Click [Numerical_Label] \n- Type [Numerical_Label]; [Content] \n- Scroll [Numerical_Label or WINDOW]; [up or down] \n- Wait \n- GoBack\n- Google\n- ANSWER; [content]\n\nKey Guidelines You MUST follow:\n\n* Action guidelines *\n1) Execute only one action per iteration.\n2) When clicking or typing, ensure to select the correct bounding box.\n3) Numeric labels lie in the top-left corner of their corresponding bounding boxes and are colored the same.\n\n* Web Browsing Guidelines *\n1) Don't interact with useless web elements like Login, Sign-in, donation that appear in Webpages\n2) Select strategically to minimize time wasted.\n\nYour reply should strictly follow the format:\n\nThought: {{Your brief thoughts (briefly summarize the info that will help ANSWER)}}\nAction: {{One Action format you choose}}\nThen the User will provide:\nObservation: {{A labeled screenshot Given by User}}\n")]), MessagesPlaceholder(variable_name='scratchpad', optional=True), HumanMessagePromptTemplate(prompt=[ImagePromptTemplate(input_variables=['img'], template={'url': 'data:image/png;base64,{img}'}), PromptTemplate(input_variables=['bbox_descriptions'], template='{bbox_descriptions}'), PromptTemplate(input_variables=['input'], template='{input}')])])
+1. Click a Web Element.
+2. Delete existing content in a textbox and then type content.
+3. Scroll up or down.
+4. Wait 
+5. Go back
+7. Return to google to start over.
+8. Respond with the final answer
+
+Correspondingly, Action should STRICTLY follow the format:
+
+- Click [Numerical_Label] 
+- Type [Numerical_Label]; [Content] 
+- Scroll [Numerical_Label or WINDOW]; [up or down] 
+- Wait 
+- GoBack
+- Google
+- ANSWER; [content]
+
+Key Guidelines You MUST follow:
+
+* Action guidelines *
+1) Execute only one action per iteration.
+2) When clicking or typing, ensure to select the correct bounding box.
+3) Numeric labels lie in the top-left corner of their corresponding bounding boxes and are colored the same.
+
+* Web Browsing Guidelines *
+1) Don't interact with useless web elements like Login, Sign-in, donation that appear in Webpages
+2) Select strategically to minimize time wasted.
+
+Your reply should strictly follow the format:
+
+Thought: {{Your brief thoughts (briefly summarize the info that will help ANSWER)}}
+Action: {{One Action format you choose}}
+Then the User will provide:
+Observation: {{A labeled screenshot Given by User}}
+"""
+                )
+            ]
+        ),
+        prompts.MessagesPlaceholder(variable_name='scratchpad', optional=True),
+        prompts.HumanMessagePromptTemplate(
+            prompt=[
+                ImagePromptTemplate(input_variables=['img'], template={'url': 'data:image/png;base64,{img}'}),
+                prompts.PromptTemplate(input_variables=['bbox_descriptions'], template='{bbox_descriptions}'),
+                prompts.PromptTemplate(input_variables=['input'], template='{input}')
+            ]
+        )
+    ]
+)
 
 llm = ChatOpenAI(model="gpt-4-vision-preview", max_tokens=4096)
 agent = annotate | RunnablePassthrough.assign(
     prediction=format_descriptions | prompt | llm | StrOutputParser() | parse
 )
 
-# 4. Define graph:
-# グラフ状態を更新するhelper関数を定義
-
+# 4. Graph:
 
 def update_scratchpad(state: AgentState):
     """After a tool is invoked, we want to update
@@ -264,8 +326,6 @@ def update_scratchpad(state: AgentState):
 
     return {**state, "scratchpad": [SystemMessage(content=txt)]}
 
-
-# create graph
 
 graph_builder = StateGraph(AgentState)
 
@@ -303,89 +363,15 @@ def select_tool(state: AgentState):
         return "agent"
     return action
 
-
 graph_builder.add_conditional_edges("agent", select_tool)
 graph = graph_builder.compile()
 
-
-# 5a. Prepare visualisation for running agent
-
-screenshots = []
-
-import io
-import textwrap
-
-from PIL import Image, ImageDraw, ImageFont
-
-base_filename = "agent_path"
-path_history_dir = "path-history"
-os.makedirs(path_history_dir, exist_ok=True)
-
-
-def create_text_image(text, width=800, height=100, font_size=100):
-    font = ImageFont.load_default()
-    image = Image.new("RGB", (width, height), color=(255, 255, 255))
-    draw = ImageDraw.Draw(image)
-    lines = textwrap.wrap(text, width=80)
-    y_text = 10
-    for line in lines:
-        draw.text((10, y_text), line, fill="black", font=font)
-        y_text += font_size + 5
-    return image
-
-
-def add_screenshot(image, is_initial=False, is_final=False):
-    global screenshots
-    if is_initial or is_final:
-        screenshots.append(image)
-    else:
-        screenshots.append(Image.open(image))
-    update_agent_path_image(image, is_initial, is_final)
-
-
-def update_agent_path_image(new_image, is_initial=False, is_final=False):
-    global screenshots
-
-    if isinstance(new_image, str):
-        img = Image.open(new_image)
-    elif isinstance(new_image, Image.Image):
-        img = new_image
-    else:
-        raise ValueError("The new_image parameter must be a file path or a PIL Image object.")
-
-    if is_initial or is_final:
-        screenshots.insert(0 if is_initial else len(screenshots), img)
-    else:
-        screenshots.append(img)
-    filename = os.path.join(path_history_dir, f"{base_filename}.png")
-
-    cols = 3
-    rows = (len(screenshots) + cols - 1) // cols
-    max_width, max_height = get_max_dimensions(screenshots)
-
-    grid_image = Image.new("RGB", (cols * max_width, rows * max_height), color=(255, 255, 255))
-    for i, img in enumerate(screenshots):
-        x = (i % cols) * max_width
-        y = (i // cols) * max_height
-        grid_image.paste(img, (x, y))
-    grid_image.save(filename)
-
-
-def get_max_dimensions(screenshots):
-    widths, heights = zip(
-        *[(img.width, img.height) if isinstance(img, Image.Image) else Image.open(img).size for img in screenshots]
-    )
-    return max(widths), max(heights)
-
-
 # 5. Run agent
 
-# エージェントが呼ばれるたびに、ステップを表示し、スクリーンショットを保存する
-
-
 async def call_agent(question: str, page, max_steps: int = 150):
-    objective_image = create_text_image("Objective: " + question, width=800, height=100, font_size=100)
-    update_agent_path_image(objective_image, is_initial=True)
+    path = Path()
+    objective_image = path.create_text_image("Objective: " + question, width=800, height=100, font_size=100)
+    path.update_agent_path_image(objective_image, is_initial=True)
 
     event_stream = graph.astream(
         {
@@ -416,23 +402,24 @@ async def call_agent(question: str, page, max_steps: int = 150):
 
         screenshot_data = base64.b64decode(event["agent"]["img"])
         img = Image.open(io.BytesIO(screenshot_data))
-        update_agent_path_image(img)
+        path.update_agent_path_image(img)
 
         if action and "ANSWER" in action:
             if action_input is None:
                 raise ValueError("No answer provided.")
             final_answer = action_input[0]
             # Create and add the final response image
-            final_response_image = create_text_image(
+            final_response_image = path.create_text_image(
                 "Final Response: " + final_answer, width=800, height=100, font_size=20
             )
-            update_agent_path_image(final_response_image, is_final=True)
+            path.update_agent_path_image(final_response_image, is_final=True)
             break
 
     return final_answer
 
 
-# Main function
+# Main
+
 async def main(objective: str):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
