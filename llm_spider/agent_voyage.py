@@ -1,18 +1,20 @@
 import argparse
 import asyncio
 import base64
+import io
 import os
 import platform
 import re
 from getpass import getpass
 from typing import List, Optional, TypedDict
-import io
 
 import nest_asyncio
+from attr import dataclass
+from dotenv import load_dotenv
 from langchain_core import prompts
-from langchain_core.prompts.image import ImagePromptTemplate
 from langchain_core.messages import BaseMessage, SystemMessage, ai, chat, function, human, system, tool
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts.image import ImagePromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_core.runnables import chain as chain_decorator
 from langchain_openai import ChatOpenAI
@@ -28,8 +30,6 @@ def _getpass(env_var: str):
     if not os.environ.get(env_var):
         os.environ[env_var] = getpass(f"{env_var}=")
 
-
-from dotenv import load_dotenv
 
 load_dotenv()
 _getpass("OPENAI_API_KEY")
@@ -62,6 +62,7 @@ class Prediction(TypedDict):
     action: str
     args: Optional[List[str]]
 
+
 class AgentState(TypedDict):
     page: Page  # The Playwright web page lets us interact with the web environment
     input: str  # User request
@@ -84,14 +85,14 @@ async def click(state: AgentState):
         return f"Failed to click bounding box labeled as number {click_args}"
     bbox_id = click_args[0]
     bbox_id = int(bbox_id)
+
     try:
         bbox = state["bboxes"][bbox_id]
-    except:
+    except IndexError:
         return f"Error: no bbox for : {bbox_id}"
     x, y = bbox["x"], bbox["y"]
-    res = await page.mouse.click(x, y)
-    # TODO: In the paper, they automatically parse any downloaded PDFs
-    # Could add something similar here as well and generally improve response format.
+    await page.mouse.click(x, y)
+
     return f"Clicked {bbox_id}"
 
 
@@ -178,7 +179,7 @@ async def mark_page(page):
         try:
             bboxes = await page.evaluate("markPage()")
             break
-        except:
+        except Exception:
             await asyncio.sleep(3)
     screenshot = await page.screenshot()
     await page.evaluate("unmarkPage()")
@@ -189,6 +190,7 @@ async def mark_page(page):
 
 
 # Agent prompt
+
 
 async def annotate(state):
     marked_page = await mark_page.with_retry().ainvoke(state["page"])
@@ -227,18 +229,18 @@ def parse(text: str) -> dict:
 
 # prompt = hub.pull("wfh/web-voyager")
 prompt = prompts.ChatPromptTemplate(
-    input_variables=['bbox_descriptions', 'img', 'input'],
+    input_variables=["bbox_descriptions", "img", "input"],
     input_types={
-        'scratchpad': list[
-            ai.AIMessage|
-            human.HumanMessage|
-            chat.ChatMessage|
-            system.SystemMessage|
-            function.FunctionMessage|
-            tool.ToolMessage
+        "scratchpad": list[
+            ai.AIMessage
+            | human.HumanMessage
+            | chat.ChatMessage
+            | system.SystemMessage
+            | function.FunctionMessage
+            | tool.ToolMessage
         ]
     },
-    partial_variables={'scratchpad': []},
+    partial_variables={"scratchpad": []},
     messages=[
         prompts.SystemMessagePromptTemplate(
             prompt=[
@@ -284,19 +286,19 @@ Thought: {{Your brief thoughts (briefly summarize the info that will help ANSWER
 Action: {{One Action format you choose}}
 Then the User will provide:
 Observation: {{A labeled screenshot Given by User}}
-"""
+""",
                 )
             ]
         ),
-        prompts.MessagesPlaceholder(variable_name='scratchpad', optional=True),
+        prompts.MessagesPlaceholder(variable_name="scratchpad", optional=True),
         prompts.HumanMessagePromptTemplate(
             prompt=[
-                ImagePromptTemplate(input_variables=['img'], template={'url': 'data:image/png;base64,{img}'}),
-                prompts.PromptTemplate(input_variables=['bbox_descriptions'], template='{bbox_descriptions}'),
-                prompts.PromptTemplate(input_variables=['input'], template='{input}')
+                ImagePromptTemplate(input_variables=["img"], template={"url": "data:image/png;base64,{img}"}),
+                prompts.PromptTemplate(input_variables=["bbox_descriptions"], template="{bbox_descriptions}"),
+                prompts.PromptTemplate(input_variables=["input"], template="{input}"),
             ]
-        )
-    ]
+        ),
+    ],
 )
 
 llm = ChatOpenAI(model="gpt-4-vision-preview", max_tokens=4096)
@@ -305,6 +307,7 @@ agent = annotate | RunnablePassthrough.assign(
 )
 
 # 4. Graph:
+
 
 def update_scratchpad(state: AgentState):
     """After a tool is invoked, we want to update
@@ -347,10 +350,10 @@ tools = {
 }
 
 
-for node_name, tool in tools.items():
+for node_name in tools:
     graph_builder.add_node(
         node_name,
-        RunnableLambda(tool) | (lambda observation: {"observation": observation}),
+        RunnableLambda(tools[node_name]) | (lambda observation: {"observation": observation}),
     )
     graph_builder.add_edge(node_name, "update_scratchpad")
 
@@ -363,10 +366,12 @@ def select_tool(state: AgentState):
         return "agent"
     return action
 
+
 graph_builder.add_conditional_edges("agent", select_tool)
 graph = graph_builder.compile()
 
 # 5. Run agent
+
 
 async def call_agent(question: str, page, max_steps: int = 150):
     path = Path()
@@ -420,7 +425,17 @@ async def call_agent(question: str, page, max_steps: int = 150):
 
 # Main
 
-async def main(objective: str):
+
+@dataclass
+class Args:
+    objective: str
+
+
+async def main():
+    parser = argparse.ArgumentParser(description="Run the agent on a given objective")
+    parser.add_argument("--objective", type=str, help="The question to run the agent on")
+    args = Args(**vars(parser.parse_args()))
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
@@ -428,14 +443,11 @@ async def main(objective: str):
         await page.goto("https://www.google.com")
 
         try:
-            res = await call_agent(objective, page)
+            res = await call_agent(args.objective, page)
             print(f"Final response: {res}")
         finally:
             await browser.close()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the agent on a given objective")
-    parser.add_argument("--objective", type=str, help="The question to run the agent on")
-    args = parser.parse_args()
-    asyncio.run(main(args.objective))
+    asyncio.run(main())

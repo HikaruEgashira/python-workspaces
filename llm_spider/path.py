@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 # 画面遷移図を作成する
 
+
 class Path:
     def __init__(self):
         self.screenshots = []
