@@ -301,7 +301,7 @@ Observation: {{A labeled screenshot Given by User}}
     ],
 )
 
-llm = ChatOpenAI(model="gpt-4-vision-preview", max_tokens=4096)
+llm = ChatOpenAI(model="gpt-4-turbo", max_tokens=4096)
 agent = annotate | RunnablePassthrough.assign(
     prediction=format_descriptions | prompt | llm | StrOutputParser() | parse
 )
@@ -436,6 +436,8 @@ async def main():
     parser.add_argument("--objective", type=str, help="The question to run the agent on")
     args = Args(**vars(parser.parse_args()))
 
+    objective = args.objective or "What is the capital of France?"
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
@@ -443,7 +445,7 @@ async def main():
         await page.goto("https://www.google.com")
 
         try:
-            res = await call_agent(args.objective, page)
+            res = await call_agent(objective, page)
             print(f"Final response: {res}")
         finally:
             await browser.close()
