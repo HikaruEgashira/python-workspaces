@@ -172,7 +172,7 @@ with open("mark_page.js") as f:
 
 
 @chain_decorator
-async def mark_page(page):
+async def mark_page(page: Page):
     await page.evaluate(mark_page_script)
     bboxes = []
     for _ in range(10):
@@ -192,12 +192,12 @@ async def mark_page(page):
 # Agent prompt
 
 
-async def annotate(state):
+async def annotate(state: AgentState) -> dict:
     marked_page = await mark_page.with_retry().ainvoke(state["page"])
     return {**state, **marked_page}
 
 
-def format_descriptions(state):
+def format_descriptions(state: dict) -> dict:
     labels = []
     for i, bbox in enumerate(state["bboxes"]):
         text = bbox.get("ariaLabel") or ""
@@ -246,7 +246,8 @@ prompt = prompts.ChatPromptTemplate(
             prompt=[
                 prompts.PromptTemplate(
                     input_variables=[],
-                    template="""Imagine you are a robot browsing the web, just like humans. Now you need to complete a task. In each iteration, you will receive an Observation that includes a screenshot of a webpage and some texts. This screenshot will
+                    template="""
+Imagine you are a robot browsing the web, just like humans. Now you need to complete a task. In each iteration, you will receive an Observation that includes a screenshot of a webpage and some texts. This screenshot will
 feature Numerical Labels placed in the TOP LEFT corner of each Web Element. Carefully analyze the visual
 information to identify the Numerical Label corresponding to the Web Element that requires interaction, then follow
 the guidelines and choose one of the following actions:
@@ -308,6 +309,17 @@ agent = annotate | RunnablePassthrough.assign(
 
 # 4. Graph:
 
+# agent
+# -> update_scratchpad (after a tool is invoked)
+# -> click (if prediction.action == "Click")
+# -> type_text (if prediction.action == "Type")
+# -> scroll (if prediction.action == "Scroll")
+# -> wait (if prediction.action == "Wait")
+# -> go_back (if prediction.action == "GoBack")
+# -> to_google (if prediction.action == "Google")
+# -> select_tool (if prediction.action == "ANSWER" or "retry")
+# -> END (if prediction.action == "ANSWER")
+
 
 def update_scratchpad(state: AgentState):
     """After a tool is invoked, we want to update
@@ -358,6 +370,7 @@ for node_name in tools:
     graph_builder.add_edge(node_name, "update_scratchpad")
 
 
+# 条件付きエッジ
 def select_tool(state: AgentState):
     action = state["prediction"]["action"]
     if action == "ANSWER":
@@ -369,6 +382,9 @@ def select_tool(state: AgentState):
 
 graph_builder.add_conditional_edges("agent", select_tool)
 graph = graph_builder.compile()
+
+graph.get_graph().draw_mermaid_png(output_file_path="graph.png")
+graph.get_graph().print_ascii()
 
 # 5. Run agent
 
@@ -463,4 +479,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}")
         exit(1)
-    

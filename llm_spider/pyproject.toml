@@ -19,6 +19,7 @@ ipython = "^8.23.0"
 langchainhub = "^0.1.15"
 playwright-stealth = "^1.0.6"
 setuptools = "^69.2.0"
+grandalf = "^0.8"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.8"
