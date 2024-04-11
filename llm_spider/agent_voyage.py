@@ -436,7 +436,10 @@ async def main():
     parser.add_argument("--objective", type=str, help="The question to run the agent on")
     args = Args(**vars(parser.parse_args()))
 
-    objective = args.objective or "What is the capital of France?"
+    objective = args.objective or input("objective: ")
+    if objective == "":
+        print("Defaulting to 'What is the capital of France?'")
+        objective = "What is the capital of France?"
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
@@ -452,4 +455,12 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Exiting...")
+        exit(0)
+    except Exception as e:
+        print(f"Error: {e}")
+        exit(1)
+    
