@@ -1,6 +1,9 @@
 {
     "folders": [
         {
+            "path": "spider"
+        },
+        {
             "path": "llm_spider"
         },
         {

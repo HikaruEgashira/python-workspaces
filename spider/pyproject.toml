@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "spider"
+version = "0.1.0"
+description = ""
+authors = []
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.12,<4.0"
+spider-rs = "^0.0.33"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.1.8"
+pytest = "^7.4.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+extend-include = ["*.ipynb"]
+extend-exclude = [".venv"]
+line-length = 119
+
+[tool.pytest.ini_options]
+log_level = "DEBUG"
+python_files = ["*.py"]
+python_functions = ["test_*"]
