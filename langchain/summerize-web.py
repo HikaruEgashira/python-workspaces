@@ -20,21 +20,21 @@ def summerize(text: str) -> str | list[str | dict[str, str]]:
             (
                 "system",
                 """
-            ----task
-            summerize
-            ----format
-            markdown table
-            ----columns
-            who(VARCHAR(255))
-            when(VARCHAR(255))
-            what(VARCHAR(255))
-            where(VARCHAR(255))
-            why(VARCHAR(255))
-            how(VARCHAR(255))
-            academic category(VARCHAR(255))
-            url(VARCHAR(255))
-            ----restrictions
-            locale: ja
+                task:
+                    summerize
+                format:
+                    markdown table
+                columns:
+                    who(VARCHAR(255))
+                    when(VARCHAR(255))
+                    what(VARCHAR(255))
+                    where(VARCHAR(255))
+                    why(VARCHAR(255))
+                    how(VARCHAR(255))
+                    academic category(VARCHAR(255))
+                    url(VARCHAR(255))
+                restrictions:
+                    locale: ja
           """,
             ),
             ("user", "{input}"),
