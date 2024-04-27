@@ -1,12 +1,15 @@
+import warnings
+
 import trafilatura
 from attr import dataclass
 from langchain.cache import SQLiteCache
-from langchain.globals import set_llm_cache
 from langchain_anthropic import ChatAnthropic
+from langchain_core.globals import set_llm_cache
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
-from pydantic import BaseModel, Field
+from langchain_core.pydantic_v1 import BaseModel, Field
 
+warnings.filterwarnings("ignore")
 set_llm_cache(SQLiteCache())
 
 
@@ -32,25 +35,21 @@ class SummarizeOutput(BaseModel):
 
 def summarize(content: str) -> SummarizeOutput:
     llm = ChatAnthropic(model_name="claude-3-haiku-20240307", temperature=0)
-    # llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
-    parser = PydanticOutputParser(pydantic_object=SummarizeOutput)
+    structured_llm = llm.with_structured_output(SummarizeOutput)
     prompt = PromptTemplate(
         template="""
         task: Summarize in japanese
-        format:
-            {format_instructions}
         content:
             {content}
         """,
         input_variables=["content"],
-        partial_variables={"format_instructions": parser.get_format_instructions()},
     )
-    chain = prompt | llm | parser
-    message = chain.invoke({"content": content})
-    if not isinstance(message, SummarizeOutput):
-        raise ValueError("The output is not of the expected type.")
+    chain = prompt | structured_llm
+    result = chain.invoke({"content": content})
+    if not isinstance(result, SummarizeOutput):
+        raise ValueError("The output is not a valid SummarizeOutput object.")
 
-    return message
+    return result
 
 
 @dataclass
@@ -70,4 +69,4 @@ if __name__ == "__main__":
 
     content = fetch_content(arg.url)
     summary = summarize(content)
-    print(summary.model_dump_json())
+    print(summary.json(indent=4, ensure_ascii=False))
