@@ -15,7 +15,28 @@ def fetch_content(url: str) -> str:
 
 
 def summerize(text: str) -> str | list[str | dict[str, str]]:
-    prompt = ChatPromptTemplate.from_messages([("system", "summerize using 5w1h, outline format"), ("user", text)])
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """
+            ----task
+            summerize
+            ----format
+            markdown table
+            ----columns
+            who(VARCHAR(255))
+            when(VARCHAR(255))
+            what(VARCHAR(255))
+            where(VARCHAR(255))
+            why(VARCHAR(255))
+            how(VARCHAR(255))
+            academic category(VARCHAR(255))
+          """,
+            ),
+            ("user", "{input}"),
+        ]
+    )
     chain = prompt | llm
     message = chain.invoke({"input": text})
     # if type(message) != str:
