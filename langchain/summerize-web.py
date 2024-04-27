@@ -1,10 +1,13 @@
 import trafilatura
 from attr import dataclass
+from langchain.cache import SQLiteCache
+from langchain.globals import set_llm_cache
 from langchain_anthropic import ChatAnthropic
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
+
+set_llm_cache(SQLiteCache())
 
 
 def fetch_content(url: str) -> str:
