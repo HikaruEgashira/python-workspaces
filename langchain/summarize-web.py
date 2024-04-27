@@ -32,15 +32,15 @@ def summarize(content: str) -> SummarizeOutput:
     structured_llm = llm.with_structured_output(SummarizeOutput)
     prompt = PromptTemplate(
         template="""
-        ----task
-        日本語で以下の形式にまとめなさい。
         ----content
         {content}
+        ----task
+        {task}
         """,
-        input_variables=["content"],
+        input_variables=[],
     )
     chain = prompt | structured_llm
-    result = chain.invoke({"content": content})
+    result = chain.invoke({"task": "contentを日本語で整理しなさい。", "content": content})
     if not isinstance(result, SummarizeOutput):
         raise ValueError("The output is not a valid SummarizeOutput object.")
     return result
