@@ -903,13 +903,13 @@ extended-testing = ["aiosqlite (>=0.19.0,<0.20.0)", "aleph-alpha-client (>=2.15.
 
 [[package]]
 name = "langchain-core"
-version = "0.1.40"
+version = "0.1.46"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain_core-0.1.40-py3-none-any.whl", hash = "sha256:618dbb7ab44d8b263b91e384db1ff07d0db256ae5bdafa0123a115b6a75a13f1"},
-    {file = "langchain_core-0.1.40.tar.gz", hash = "sha256:34c06fc0e6d3534b738c63f85403446b4be71161665b7e091f9bb19c914ec100"},
+    {file = "langchain_core-0.1.46-py3-none-any.whl", hash = "sha256:1c0befcd2665dd4aa153318aa9bf729071644b4c179e491769b8e583b4bf7441"},
+    {file = "langchain_core-0.1.46.tar.gz", hash = "sha256:17c416349f5c7a9808e70e3725749a3a2df5088f1ecca045c883871aa95f9c9e"},
 ]
 
 [package.dependencies]
@@ -973,6 +973,20 @@ language-data = ">=1.2"
 [package.extras]
 build = ["build", "twine"]
 test = ["pytest", "pytest-cov"]
+
+[[package]]
+name = "langgraph"
+version = "0.0.39"
+description = "langgraph"
+optional = false
+python-versions = "<4.0,>=3.9.0"
+files = [
+    {file = "langgraph-0.0.39-py3-none-any.whl", hash = "sha256:acb4bae704a9467ba5e07c892174f345651b4c930853a37cb4ceab7964cf8222"},
+    {file = "langgraph-0.0.39.tar.gz", hash = "sha256:cafcc8254b41bae55c4429b7925af83c846fd5e4c24159d1e03b98b2ca7c79a9"},
+]
+
+[package.dependencies]
+langchain-core = ">=0.1.46,<0.2.0"
 
 [[package]]
 name = "langsmith"
@@ -2403,4 +2417,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<4.0"
-content-hash = "dae392f0941b93a29b17c5671ead889687a2d9ed74f3149d769f83f91f62df70"
+content-hash = "0499696fcc6ac333555f04857cce208ded78833b3757dc0e1b1cd3dcf997f2bf"
