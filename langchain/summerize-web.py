@@ -1,3 +1,5 @@
+import json
+
 import trafilatura
 from attr import dataclass
 from langchain_anthropic import ChatAnthropic
@@ -14,7 +16,7 @@ def fetch_content(url: str) -> str:
     return content
 
 
-def summerize(text: str) -> str | list[str | dict[str, str]]:
+def summerize(text: str) -> str:
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -39,8 +41,8 @@ def summerize(text: str) -> str | list[str | dict[str, str]]:
     )
     chain = prompt | llm
     message = chain.invoke({"input": text})
-    # if type(message) != str:
-    #     raise ValueError("Invalid response from model")
+    if not isinstance(message.content, str):
+        raise ValueError("Invalid response from model")
     return message.content
 
 
