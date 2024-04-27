@@ -1,5 +1,3 @@
-import json
-
 import trafilatura
 from attr import dataclass
 from langchain_anthropic import ChatAnthropic
@@ -13,6 +11,7 @@ def fetch_content(url: str) -> str:
     content = trafilatura.extract(downloaded, include_links=True, output_format="json")
     if content is None:
         return "This page does not contain any text."
+
     return content
 
 
@@ -43,6 +42,7 @@ def summerize(text: str) -> str:
     message = chain.invoke({"input": text})
     if not isinstance(message.content, str):
         raise ValueError("Invalid response from model")
+
     return message.content
 
 
@@ -57,10 +57,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Webページを要約します")
     parser.add_argument("url", type=str, help="要約するWebページのURL", nargs="?")
     arg = Args(**vars(parser.parse_args()))
-
     if arg.url is None:
         parser.print_help()
         exit(0)
 
-    text = fetch_content(arg.url)
-    print(summerize(text))
+    content = fetch_content(arg.url)
+    print(summerize(content))
