@@ -33,7 +33,7 @@ def summarize(content: str) -> SummarizeOutput:
     prompt = PromptTemplate(
         template="""
         ----task
-        Summarize in japanese
+        日本語で以下の形式にまとめなさい。
         ----content
         {content}
         """,
