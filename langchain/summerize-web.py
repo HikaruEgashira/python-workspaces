@@ -1,49 +1,53 @@
 import trafilatura
 from attr import dataclass
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
-
-llm = ChatAnthropic(model_name="claude-3-haiku-20240307", temperature=0)
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
 
 
 def fetch_content(url: str) -> str:
     downloaded = trafilatura.fetch_url(url)
     content = trafilatura.extract(downloaded, include_links=True, output_format="json")
     if content is None:
-        return "This page does not contain any text."
+        return "This page does not contain any content."
 
     return content
 
 
-def summerize(text: str) -> str:
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """
-                task: summerize
-                locale: ja
-                format: markdown table
-                columns:
-                    who: VARCHAR(255)
-                    when: VARCHAR(255)
-                    what: VARCHAR(255)
-                    where: VARCHAR(255)
-                    why: VARCHAR(255)
-                    how: VARCHAR(255)
-                    academic category: VARCHAR(255)
-                    url: VARCHAR(255)
-          """,
-            ),
-            ("user", "{input}"),
-        ]
-    )
-    chain = prompt | llm
-    message = chain.invoke({"input": text})
-    if not isinstance(message.content, str):
-        raise ValueError("Invalid response from model")
+class SummarizeOutput(BaseModel):
+    Who: str = Field(description="who")
+    When: str = Field(description="when")
+    What: str = Field(description="what")
+    Where: str = Field(description="where")
+    Why: str = Field(description="why")
+    How: str = Field(description="how")
+    Category: str = Field(description="academic category")
+    URL: str = Field(description="url")
 
-    return message.content
+
+def summarize(content: str) -> SummarizeOutput:
+    llm = ChatAnthropic(model_name="claude-3-haiku-20240307", temperature=0)
+    # llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+    parser = PydanticOutputParser(pydantic_object=SummarizeOutput)
+    prompt = PromptTemplate(
+        template="""
+        task: Summarize in japanese
+        format:
+            {format_instructions}
+        content:
+            {content}
+        """,
+        input_variables=["content"],
+        partial_variables={"format_instructions": parser.get_format_instructions()},
+    )
+    chain = prompt | llm | parser
+    message = chain.invoke({"content": content})
+    if not isinstance(message, SummarizeOutput):
+        raise ValueError("The output is not of the expected type.")
+
+    return message
 
 
 @dataclass
@@ -62,4 +66,5 @@ if __name__ == "__main__":
         exit(0)
 
     content = fetch_content(arg.url)
-    print(summerize(content))
+    summary = summarize(content)
+    print(summary.model_dump_json())
