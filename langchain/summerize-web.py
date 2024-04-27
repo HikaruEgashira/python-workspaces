@@ -5,7 +5,6 @@ from attr import dataclass
 from langchain.cache import SQLiteCache
 from langchain_anthropic import ChatAnthropic
 from langchain_core.globals import set_llm_cache
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
 
@@ -17,7 +16,7 @@ def fetch_content(url: str) -> str:
     downloaded = trafilatura.fetch_url(url)
     content = trafilatura.extract(downloaded, include_links=True, output_format="json")
     if content is None:
-        return "This page does not contain any content."
+        raise ValueError("Failed to extract content from the URL.")
 
     return content
 
