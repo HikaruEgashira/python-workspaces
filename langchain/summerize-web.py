@@ -8,7 +8,7 @@ llm = ChatAnthropic(model_name="claude-3-haiku-20240307", temperature=0)
 
 def fetch_content(url: str) -> str:
     downloaded = trafilatura.fetch_url(url)
-    content = trafilatura.extract(downloaded)
+    content = trafilatura.extract(downloaded, include_links=True, output_format="json")
     if content is None:
         return "This page does not contain any text."
     return content
@@ -32,6 +32,9 @@ def summerize(text: str) -> str | list[str | dict[str, str]]:
             why(VARCHAR(255))
             how(VARCHAR(255))
             academic category(VARCHAR(255))
+            url(VARCHAR(255))
+            ----restrictions
+            locale: ja
           """,
             ),
             ("user", "{input}"),
