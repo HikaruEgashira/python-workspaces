@@ -417,6 +417,7 @@ async def call_agent(question: str, page, max_steps: int = 150):
 
         step_counter += 1
         steps.append(f"{step_counter}. {action}: {action_input}")
+        print(f"{step_counter}. {action}: {action_input}")
 
         with open("agent_steps.txt", "w") as file:
             file.write("\n".join(steps))
@@ -434,7 +435,6 @@ async def call_agent(question: str, page, max_steps: int = 150):
                 "Final Response: " + final_answer, width=800, height=100, font_size=20
             )
             path.update_agent_path_image(final_response_image, is_final=True)
-            break
 
     return final_answer
 
