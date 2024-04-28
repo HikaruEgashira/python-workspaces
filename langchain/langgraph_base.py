@@ -3,7 +3,7 @@ import warnings
 
 from langchain_anthropic import ChatAnthropic
 from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, BaseMessage
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, MessageGraph
@@ -24,7 +24,7 @@ def should_continue(messages: list[AIMessage]):
 # 利用するツールとモデルを定義
 tools = [TavilySearchResults(max_results=1)]
 # model = ChatAnthropic(model_name="claude-3-haiku-20240307")
-model = ChatOpenAI(model="gpt-3.5-turbo")
+model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
 
 # ワークフローを定義
 workflow = MessageGraph()
@@ -53,9 +53,10 @@ question = args.question or "2024/01/01の東京の天気は？"
 thread = {"configurable": {"thread_id": "4"}}
 for step in app.stream(question, thread):  # type: ignore
     node, message = next(iter(step.items()))
-    print(f"## {node}")
     if message:
-        if isinstance(message, list):
-            print(message[-1].content)
-        else:
-            print(message.content)
+        if isinstance(message, list) and isinstance(message[-1], BaseMessage):
+            message[-1].pretty_print()
+        elif isinstance(message, BaseMessage):
+            message.pretty_print()
+            if isinstance(message, AIMessage) and len(message.tool_calls) > 0:
+                print(message.tool_calls)
