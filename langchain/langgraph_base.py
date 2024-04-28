@@ -3,6 +3,7 @@ import warnings
 
 from langchain_anthropic import ChatAnthropic
 from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, MessageGraph
@@ -13,12 +14,11 @@ warnings.filterwarnings("ignore")
 
 
 # 条件付きエッジ
-def should_continue(messages):
+def should_continue(messages: list[AIMessage]):
     last_message = messages[-1]
-    if not last_message.tool_calls:
-        return END
-    else:
+    if last_message.tool_calls:
         return "action"
+    return END
 
 
 # 利用するツールとモデルを定義
