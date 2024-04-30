@@ -1,6 +1,9 @@
 {
     "folders": [
         {
+            "path": "playwright_for_llm"
+        },
+        {
             "path": "spider"
         },
         {
