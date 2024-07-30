@@ -6,27 +6,35 @@ from multion.client import MultiOn
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 MULTION_API_KEY = os.getenv('MULTION_API_KEY')
 
-multion = MultiOn(api_key=MULTION_API_KEY)
+client = MultiOn(api_key=MULTION_API_KEY)
+create_response = client.sessions.create(
+    url="https://google.com",
+    # local=True
+)
 
-command = "LLMに関する今日最新の論文を見つけてください。"
-browse_result = multion.browse(cmd=command, url="https://arxiv.org/")
+command = """今日の日本のニュースをダイジェスト形式で教えて"""
+browse_result = client.browse(
+    cmd=command,
+    session_id=create_response.session_id,
+)
 print(browse_result.status)
+print(browse_result.url)
 print(browse_result.message)
 print(browse_result.screenshot)
 
-while browse_result.status == "NOT_SURE":
+while browse_result.status != "DONE":
     revised_command = input("Please provide a revised command: ")
     if revised_command == "exit":
         break
     if revised_command:
-        command += revised_command
+        command = revised_command
 
-    browse_result = multion.browse(
+    browse_result = client.browse(
         cmd=command,
         session_id=browse_result.session_id,
-        url=browse_result.url
     )
     print(browse_result.status)
+    print(browse_result.url)
     print(browse_result.message)
     print(browse_result.screenshot)
 
