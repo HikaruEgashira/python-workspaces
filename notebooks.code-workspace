@@ -19,6 +19,9 @@
             "path": "demo"
         },
         {
+            "path": "multion"
+        },
+        {
             "path": ".",
             "name": "root"
         }
