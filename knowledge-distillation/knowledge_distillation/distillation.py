@@ -20,7 +20,7 @@ Markdownの-を使った順序なしリスト形式で出力してください�
 """
         return self.teacher.generate(prompt).split("\n")
         
-    def generate_inference(self, event: str) -> str:
+    def generate_inference(self, event: str) -> dict[str, str]:
         prompt = f"""以下のイベントについて、因果関係を持つ推論を生成してください。
 
 ### ルール
@@ -36,9 +36,25 @@ Markdownの-を使った順序なしリスト形式で出力してください�
 - xReact: X の行動の後の感情反応
 - HinderedBy: X の行動が妨げられる要因
 
-イベント: {event}
+### 出力フォーマット
+- xEvent: {event}
+- xEffect: xxx
+- xWant: xxx
+- xNeed: xxx
+- xIntent: xxx
+- xReact: xxx
+- HinderedBy: xxx
+
+出力フォーマットには厳密に従ってください。出力フォーマットにない余計な出力は絶対に含めないようにしてください。
 """
-        return self.teacher.generate(prompt)
+        response = self.teacher.generate(prompt)
+        relations = {}
+        for line in response.split("\n"):
+            if ":" in line:
+                key, value = line.split(":", 1)
+                key = key.strip("- ")
+                relations[key] = value.strip()
+        return relations
 
     def filter_inference(self, event: str, relation: str, inference: str) -> bool:
         prompt = f"""以下のイベントと推論が適切かどうかを評価してください。

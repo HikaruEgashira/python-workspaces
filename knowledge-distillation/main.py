@@ -16,16 +16,18 @@ def main():
     # 最初のイベントに対する推論の生成と評価
     if events:
         print("\n最初のイベントに対する推論:")
-        inference = distillation.generate_inference(events[0])
-        print(inference)
-        
-        print("\n推論の評価:")
-        is_valid = distillation.filter_inference(
-            event=events[0],
-            relation="xEffect",
-            inference=inference
-        )
-        print(f"評価結果: {'適切' if is_valid else '不適切'}")
+        inferences = distillation.generate_inference(events[0])
+        for relation, inference in inferences.items():
+            print(f"- {relation}: {inference}")
+            
+            if relation != "xEvent":
+                print(f"\n{relation}の評価:")
+                is_valid = distillation.filter_inference(
+                    event=events[0],
+                    relation=relation,
+                    inference=inference
+                )
+                print(f"評価結果: {'適切' if is_valid else '不適切'}")
 
 if __name__ == "__main__":
     main()
