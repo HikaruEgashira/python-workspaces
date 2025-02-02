@@ -22,6 +22,7 @@ Markdownの-を使った順序なしリスト形式で出力してください�
         return self.teacher.generate(prompt).split("\n")
         
     def generate_inference(self, event: str) -> dict[str, str]:
+        print(f"\nGenerating inference for event: {event}")
         prompt = f"""以下のイベントについて、因果関係を持つ推論を生成してください。
 
 ### ルール
@@ -48,7 +49,9 @@ Markdownの-を使った順序なしリスト形式で出力してください�
 
 出力フォーマットには厳密に従ってください。出力フォーマットにない余計な出力は絶対に含めないようにしてください。
 """
+        print("Sending request to teacher model...")
         response = self.teacher.generate(prompt)
+        print(f"Teacher model response:\n{response}")
         relations = {}
         for line in response.split("\n"):
             if ":" in line:
@@ -99,6 +102,11 @@ Markdownの-を使った順序なしリスト形式で出力してください�
         return metrics
 
     def filter_inference(self, event: str, relation: str, inference: str) -> bool:
+        print(f"\nEvaluating inference:")
+        print(f"Event: {event}")
+        print(f"Relation: {relation}")
+        print(f"Inference: {inference}")
+        
         prompt = f"""以下のイベントと推論が適切かどうかを評価してください。
 
 ### チェック基準:
@@ -114,4 +122,7 @@ Markdownの-を使った順序なしリスト形式で出力してください�
 
 回答は "True" または "False" のみで答えてください。
 """
-        return self.student.generate(prompt).strip().lower() == "true"
+        print("Sending request to student model...")
+        response = self.student.generate(prompt)
+        print(f"Student model response: {response}")
+        return response.strip().lower() == "true"
