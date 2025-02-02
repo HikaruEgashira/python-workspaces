@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Dict, Tuple
+from collections import Counter
 from .models import TeacherModel, StudentModel
 
 class KnowledgeDistillation:
@@ -55,6 +56,47 @@ Markdownの-を使った順序なしリスト形式で出力してください�
                 key = key.strip("- ")
                 relations[key] = value.strip()
         return relations
+
+    def evaluate_inferences(self, events: List[str], num_samples: int = 5) -> Dict[str, Dict[str, float]]:
+        metrics = {
+            "generation_rate": {},  # 各関係タイプの生成成功率
+            "validity_rate": {},    # 各関係タイプの妥当性評価率
+            "diversity": {},        # 各関係タイプの推論の多様性
+        }
+        
+        all_inferences = {relation: [] for relation in ["xEffect", "xWant", "xNeed", "xIntent", "xReact", "HinderedBy"]}
+        valid_counts = {relation: 0 for relation in all_inferences.keys()}
+        total_counts = {relation: 0 for relation in all_inferences.keys()}
+        
+        for event in events[:num_samples]:
+            inferences = self.generate_inference(event)
+            for relation in all_inferences.keys():
+                if relation in inferences:
+                    total_counts[relation] += 1
+                    inference = inferences[relation]
+                    all_inferences[relation].append(inference)
+                    
+                    if self.filter_inference(event, relation, inference):
+                        valid_counts[relation] += 1
+        
+        for relation in all_inferences.keys():
+            # 生成率の計算
+            metrics["generation_rate"][relation] = total_counts[relation] / num_samples
+            
+            # 妥当性の計算
+            if total_counts[relation] > 0:
+                metrics["validity_rate"][relation] = valid_counts[relation] / total_counts[relation]
+            else:
+                metrics["validity_rate"][relation] = 0.0
+            
+            # 多様性の計算（重複度の逆数）
+            if all_inferences[relation]:
+                counter = Counter(all_inferences[relation])
+                metrics["diversity"][relation] = len(all_inferences[relation]) / len(counter)
+            else:
+                metrics["diversity"][relation] = 0.0
+        
+        return metrics
 
     def filter_inference(self, event: str, relation: str, inference: str) -> bool:
         prompt = f"""以下のイベントと推論が適切かどうかを評価してください。
