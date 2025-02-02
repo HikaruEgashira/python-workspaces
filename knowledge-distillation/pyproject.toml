@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "knowledge-distillation"
+version = "0.1.0"
+description = "Knowledge distillation experiment using o3-mini and gpt-4o-mini"
+authors = ["Devin"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+openai = "^1.61.0"
+anthropic = "^0.45.2"
+python-dotenv = "^1.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
