@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "mcp-memory"
+version = "0.1.0"
+description = "Memory server implementation for Model Context Protocol"
+authors = ["Hikaru Egashira"]
+readme = "README.md"
+packages = [{include = "mcp_memory", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.8"
+uvicorn = "^0.34.0"
+pydantic = "^2.10.6"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.25.3"
+httpx = "^0.28.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
